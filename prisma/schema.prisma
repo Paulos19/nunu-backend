@@ -18,16 +18,36 @@ model User {
   id            String    @id @default(cuid())
   name          String
   email         String    @unique
-  passwordHash  String    // Nunca salvamos senha pura!
+  passwordHash  String
   role          Role      @default(CLIENT)
   
-  // Dados de Perfil (Opcionais por enquanto)
+  // Dados básicos (compartilhados)
   phone         String?
   avatarUrl     String?
-  bio           String?
+  
+  // Relacionamento (1-para-1)
+  providerProfile ProviderProfile?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  @@map("users") // Boas práticas: tabelas em minúsculo/plural no banco
+  @@map("users")
+}
+
+// ⚠️ NOVO MODEL: Dados Específicos do Profissional
+model ProviderProfile {
+  id          String   @id @default(cuid())
+  
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+
+  category    String   // Ex: "DJ", "Barman"
+  bio         String?  // Descrição do serviço
+  basePrice   Decimal? @db.Decimal(10, 2) // Preço "a partir de"
+  city        String?  // Onde atende
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("provider_profiles")
 }
