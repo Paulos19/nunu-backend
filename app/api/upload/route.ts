@@ -12,13 +12,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
     }
 
-    // Envia para o Vercel Blob
-    // O nome do arquivo será único automaticamente
+    // CORREÇÃO: Adicionado addRandomSuffix e access public
     const blob = await put(file.name, file, {
       access: "public",
+      addRandomSuffix: true, // Garante nome único sempre
     });
 
-    // Retorna a URL pública da imagem
     return NextResponse.json({ url: blob.url });
 
   } catch (error) {
