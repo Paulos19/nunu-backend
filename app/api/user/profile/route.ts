@@ -5,18 +5,19 @@ import jwt from "jsonwebtoken";
 
 export const dynamic = 'force-dynamic';
 
-// Schema de Validação
+// 1. Schema de Validação (Agora com avatarUrl)
 const updateProfileSchema = z.object({
   category: z.string().min(2).optional(),
   bio: z.string().optional(),
-  basePrice: z.number().optional(), // Recebe number, converte pra Decimal
+  basePrice: z.any().optional(), // Aceita number ou string (conversão feita abaixo)
   city: z.string().optional(),
-  phone: z.string().optional(), // Atualiza no User
+  phone: z.string().optional(),
+  avatarUrl: z.string().url().optional(), // <--- CAMPO IMPORTANTE
 });
 
 export async function PATCH(request: Request) {
   try {
-    // 1. Validar Token (Segurança Manual Simples)
+    // 2. Validar Token (Segurança Manual)
     const authHeader = request.headers.get("Authorization");
     if (!authHeader) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     
@@ -32,25 +33,30 @@ export async function PATCH(request: Request) {
 
     const userId = decoded.sub;
 
-    // 2. Parse do Body
+    // 3. Parse do Body
     const body = await request.json();
     const data = updateProfileSchema.parse(body);
 
-    // 3. Atualizar no Banco (Transação para garantir integridade)
-    // Atualizamos User (phone) e ProviderProfile (resto) juntos
+    // Ajuste de Preço (Garante que é número para o Decimal do Prisma)
+    const price = data.basePrice ? Number(data.basePrice) : undefined;
+
+    // 4. Transação no Banco
     await prisma.$transaction(async (tx) => {
       
-      // Atualiza telefone no User
-      if (data.phone) {
+      // A: Atualiza dados do USUÁRIO (Avatar + Telefone)
+      // Só executa se houver dados para atualizar
+      if (data.phone || data.avatarUrl) {
         await tx.user.update({
           where: { id: userId },
-          data: { phone: data.phone }
+          data: { 
+            phone: data.phone,
+            avatarUrl: data.avatarUrl 
+          }
         });
       }
 
-      // Atualiza ou Cria o Perfil do Profissional
-      // (Apenas se tiver dados de perfil para atualizar)
-      if (data.category || data.bio || data.basePrice || data.city) {
+      // B: Atualiza ou Cria o PERFIL DO PROFISSIONAL
+      if (data.category || data.bio || price || data.city) {
         await tx.providerProfile.upsert({
           where: { userId: userId },
           create: {
@@ -58,13 +64,13 @@ export async function PATCH(request: Request) {
             category: data.category || "Geral",
             bio: data.bio,
             city: data.city,
-            basePrice: data.basePrice,
+            basePrice: price,
           },
           update: {
             category: data.category,
             bio: data.bio,
             city: data.city,
-            basePrice: data.basePrice,
+            basePrice: price,
           }
         });
       }
@@ -73,7 +79,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ success: true }, { status: 200 });
 
   } catch (error) {
-    console.error(error);
+    console.error("Erro no update de perfil:", error);
     return NextResponse.json({ error: "Erro ao atualizar perfil" }, { status: 500 });
   }
 }
