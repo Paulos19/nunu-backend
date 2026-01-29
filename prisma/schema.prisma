@@ -27,6 +27,7 @@ model User {
   
   // Relacionamento (1-para-1)
   providerProfile ProviderProfile?
+  clientProfile   ClientProfile?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -50,4 +51,21 @@ model ProviderProfile {
   updatedAt   DateTime @updatedAt
 
   @@map("provider_profiles")
+}
+
+model ClientProfile {
+  id          String   @id @default(cuid())
+  
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+
+  eventType   String?  // Ex: "Casamento", "Aniversário"
+  lookingFor  String?  // Ex: "DJ, Buffet"
+  city        String?  // Local do evento
+  eventDate   String?  // Data prevista (opcional)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("client_profiles")
 }

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     // INCLUIR O PERFIL NA RESPOSTA
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { providerProfile: true } // <--- IMPORTANTE
+      include: { providerProfile: true, clientProfile: true } // <--- IMPORTANTE
     });
 
     if (!user) {
@@ -59,7 +59,8 @@ export async function POST(request: Request) {
         role: user.role,
         avatarUrl: user.avatarUrl,
         phone: user.phone,
-        providerProfile: user.providerProfile // Envia null se não tiver
+        providerProfile: user.providerProfile,
+        clientProfile: user.clientProfile,
       }
     }, { status: 200 });
 
