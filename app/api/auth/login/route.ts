@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma"; // Sua lib do Prisma
+import prisma from "@/lib/prisma";
 
-// Importante para evitar erros de build na Vercel
 export const dynamic = 'force-dynamic';
 
-// 1. Schema de Validação
 const loginBodySchema = z.object({
   email: z.string().email(),
   password: z.string(),
@@ -15,16 +13,15 @@ const loginBodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // 2. Recebe os dados
     const body = await request.json();
     const { email, password } = loginBodySchema.parse(body);
 
-    // 3. Busca o usuário no banco
+    // INCLUIR O PERFIL NA RESPOSTA
     const user = await prisma.user.findUnique({
       where: { email },
+      include: { providerProfile: true } // <--- IMPORTANTE
     });
 
-    // 4. Segurança: Se não achar usuário, retorna erro genérico (evita enumerar e-mails)
     if (!user) {
       return NextResponse.json(
         { error: "E-mail ou senha incorretos." },
@@ -32,7 +29,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Verifica a senha (Hash)
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
@@ -42,21 +38,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Gera o Token JWT
-    // Pega o segredo do .env ou usa um fallback para dev (NUNCA use fallback em produção)
     const secret = process.env.JWT_SECRET || "nunu-secret-dev-key";
 
     const token = jwt.sign(
       { 
-        sub: user.id, // Subject (Quem é o dono do token)
-        role: user.role, // Guardamos a role no token para facilitar verificação no front
+        sub: user.id, 
+        role: user.role, 
         name: user.name 
       }, 
       secret, 
-      { expiresIn: '7d' } // Expira em 7 dias
+      { expiresIn: '7d' }
     );
 
-    // 7. Retorna os dados para o Mobile
     return NextResponse.json({
       token,
       user: {
@@ -64,6 +57,9 @@ export async function POST(request: Request) {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        providerProfile: user.providerProfile // Envia null se não tiver
       }
     }, { status: 200 });
 
