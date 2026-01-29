@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum para garantir que só existam estes tipos de usuário
+enum Role {
+  ADMIN     // Gestão Web
+  CLIENT    // Usuário que contrata
+  PROVIDER  // Profissional que oferece serviço
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String    // Nunca salvamos senha pura!
+  role          Role      @default(CLIENT)
+  
+  // Dados de Perfil (Opcionais por enquanto)
+  phone         String?
+  avatarUrl     String?
+  bio           String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users") // Boas práticas: tabelas em minúsculo/plural no banco
+}
